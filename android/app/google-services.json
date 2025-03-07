@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "184915145835",
+    "project_id": "disclystics",
+    "storage_bucket": "disclystics.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:184915145835:android:85234dcec9dc28746dad2e",
+        "android_client_info": {
+          "package_name": "com.example.disclystics"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAvJXPq-pwFvvFI_r8POVBIyJqtDeMmh6Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
