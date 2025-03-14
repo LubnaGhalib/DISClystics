@@ -298,13 +298,17 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   }) {
     return DropdownButtonFormField(
       value: value,
+      isExpanded: true,
       // Binds the current selected value
       decoration: InputDecoration(
         isDense: true, // Reduces the size of input fields
         labelText: label, // Displays label above dropdown
         border: const OutlineInputBorder(), // Adds a border around dropdown
       ),
-      hint: Text(hint),
+      hint: Text(
+          hint,
+          overflow: TextOverflow.ellipsis, // Truncate hint text with ... to avoid overflow
+     ),
       // Displays hint when no selection is made
       items: items.map<DropdownMenuItem>((item) {
         return DropdownMenuItem(
