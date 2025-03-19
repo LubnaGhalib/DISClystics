@@ -74,7 +74,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Register')),
+      appBar: AppBar(title: const Text('Register'), backgroundColor: Color(0xFF582562), ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -196,11 +196,12 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     onPressed: _isLoading ? null : _registerWithEmail,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Color(0xFFE4450F),
                     ),
                     child: _isLoading
                         ? const CircularProgressIndicator()
-                        : const Text(
-                        'Register', style: TextStyle(fontSize: 18)),
+                        : const Text('Register', style: TextStyle(fontSize: 18),),
+
                   ),
                 ),
                 const SizedBox(height: 20),
