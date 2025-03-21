@@ -64,6 +64,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '184915145835',
     projectId: 'disclystics',
     storageBucket: 'disclystics.firebasestorage.app',
+    androidClientId: '184915145835-8e9teiptj0d83bsp6cs65e42lca6di3j.apps.googleusercontent.com',
+    iosClientId: '184915145835-is0v64fi3pr3nedc4h4n39tsgbqueuiq.apps.googleusercontent.com',
     iosBundleId: 'com.example.disclystics',
   );
 
@@ -73,6 +75,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '184915145835',
     projectId: 'disclystics',
     storageBucket: 'disclystics.firebasestorage.app',
+    androidClientId: '184915145835-8e9teiptj0d83bsp6cs65e42lca6di3j.apps.googleusercontent.com',
+    iosClientId: '184915145835-is0v64fi3pr3nedc4h4n39tsgbqueuiq.apps.googleusercontent.com',
     iosBundleId: 'com.example.disclystics',
   );
 
@@ -85,4 +89,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'disclystics.firebasestorage.app',
     measurementId: 'G-0SZHVSZ062',
   );
+
 }

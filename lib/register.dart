@@ -1,19 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'login.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
 
   @override
-  _RegistrationScreenState createState() => _RegistrationScreenState();
+  RegistrationScreenState createState() => RegistrationScreenState();
 }
 
-class _RegistrationScreenState extends State<RegistrationScreen> {
-  // Form key to validate form fields
+class RegistrationScreenState extends State<RegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
-
-  // Controllers to manage text input fields
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -22,61 +20,96 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final _confirmPasswordController = TextEditingController();
   final _businessNameController = TextEditingController();
 
-  // Dropdown selections
   String? _selectedRole;
   String? _selectedHearAbout;
   String? _selectedCountry;
-
-  // Toggle password visibility
   bool _obscurePassword = true;
-
-  // Loading state for registration process
+  bool _obscureConfirmPassword = true;
   bool _isLoading = false;
 
-  // List of roles for dropdown
   final List<Map<String, String>> _roles = [
     {'value': 'business', 'label': 'Business Owner'},
     {'value': 'individual', 'label': 'Individual'},
   ];
 
-  // List of available countries
-  final List<String> _countries = [
-    'Pakistan',
-    'USA',
-    'Canada',
-    'UK',
-    'Australia'
-  ];
+  final List<String> _countries = ['Pakistan', 'USA', 'Canada', 'UK', 'Australia'];
 
-  // Function to handle user registration with Firebase
   Future<void> _registerWithEmail() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       try {
+        // Check if username is unique
+        final username = _usernameController.text.trim();
+        final usernameQuery = await FirebaseFirestore.instance
+            .collection('users')
+            .where('username', isEqualTo: username)
+            .get();
+        if (usernameQuery.docs.isNotEmpty) {
+          throw 'Username already taken';
+        }
+
+        // Create user in Firebase Auth
+        UserCredential userCredential =
         await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
+
+        // Save user data to Firestore
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userCredential.user!.uid)
+            .set({
+          'firstName': _firstNameController.text.trim(),
+          'lastName': _lastNameController.text.trim(),
+          'email': _emailController.text.trim(),
+          'username': username,
+          'role': _selectedRole,
+          'businessName': _selectedRole == 'business'
+              ? _businessNameController.text.trim()
+              : null,
+          'country': _selectedCountry,
+          'hearAbout': _selectedHearAbout,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
         if (!mounted) return;
-        Navigator.pushReplacementNamed(
-            context, '/home'); // Navigate to home after successful registration
+        Navigator.pushReplacementNamed(context, '/home');
       } on FirebaseAuthException catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message ?? 'Registration failed')),
-        );
-      } finally {
-        if (mounted) {
-          setState(() => _isLoading = false);
+        String errorMessage = 'Registration failed. Please try again.';
+        switch (e.code) {
+          case 'email-already-in-use':
+            errorMessage = 'An account already exists for this email.';
+            break;
+          case 'invalid-email':
+            errorMessage = 'Please enter a valid email address.';
+            break;
+          case 'weak-password':
+            errorMessage = 'Password must be at least 6 characters.';
+            break;
         }
-      }
-    }
-  }
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorMessage),
+              duration: const Duration(seconds: 5),
+            ));
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(e.toString()),
+                duration: const Duration(seconds: 5),
+              ));
+              } finally {
+              if (mounted) setState(() => _isLoading = false);
+              }
+          }
+          }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Register'), backgroundColor: Color(0xFF582562), ),
-
+      appBar: AppBar(
+        title: const Text('Register'),
+        backgroundColor: const Color(0xFF582562),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -84,67 +117,75 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             key: _formKey,
             child: Column(
               children: [
-                // First Name & Last Name fields
                 _buildFieldRow(
                   left: _buildTextField(
                     controller: _firstNameController,
                     label: 'First Name',
-                    validator: (value) => value!.isEmpty ? 'Required' : null,
+                    validator: (value) =>
+                    value!.isEmpty ? 'Please enter your first name' : null,
+                    textCapitalization: TextCapitalization.words,
                   ),
                   right: _buildTextField(
                     controller: _lastNameController,
                     label: 'Last Name',
-                    validator: (value) => value!.isEmpty ? 'Required' : null,
+                    validator: (value) =>
+                    value!.isEmpty ? 'Please enter your last name' : null,
+                    textCapitalization: TextCapitalization.words,
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // Email & Username fields
                 _buildFieldRow(
                   left: _buildTextField(
                     controller: _emailController,
                     label: 'Email',
                     validator: (value) {
-                      if (value!.isEmpty) return 'Required';
-                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}\$')
+                      if (value!.isEmpty) return 'Please enter your email';
+                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
                           .hasMatch(value)) {
-                        return 'Invalid email';
+                        return 'Invalid email address';
                       }
                       return null;
                     },
+                    keyboardType: TextInputType.emailAddress,
                   ),
                   right: _buildTextField(
                     controller: _usernameController,
                     label: 'Username',
-                    validator: (value) => value!.isEmpty ? 'Required' : null,
+                    validator: (value) =>
+                    value!.isEmpty ? 'Please enter a username' : null,
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // Password & Confirm Password fields
                 _buildFieldRow(
                   left: _buildPasswordField(
                     controller: _passwordController,
                     label: 'Password',
+                    isConfirmPassword: false,
                     validator: (value) {
-                      if (value!.isEmpty) return 'Required';
+                      if (value!.isEmpty) return 'Please enter a password';
                       if (value.length < 8) return 'Minimum 8 characters';
+                      if (!value.contains(RegExp(r'[A-Z]'))) {
+                        return 'At least one uppercase letter';
+                      }
+                      if (!value.contains(RegExp(r'[0-9]'))) {
+                        return 'At least one number';
+                      }
                       return null;
                     },
                   ),
                   right: _buildPasswordField(
                     controller: _confirmPasswordController,
                     label: 'Confirm Password',
+                    isConfirmPassword: true,
                     validator: (value) {
-                      if (value != _passwordController.text)
-                        return 'Passwords must match';
+                      if (value != _passwordController.text) {
+                        return 'Passwords do not match';
+                      }
                       return null;
                     },
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // Role & Referral dropdowns
                 _buildFieldRow(
                   left: _buildDropdown(
                     value: _selectedRole,
@@ -155,62 +196,50 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   ),
                   right: _buildDropdown(
                     value: _selectedHearAbout,
-                    items: const [
-                      'Social Media',
-                      'Friend',
-                      'Advertisement',
-                      'Other'
-                    ],
-                    hint: 'Choose an option',
-                    label: 'How did you hear about us?',
-                    onChanged: (value) =>
-                        setState(() => _selectedHearAbout = value),
+                    items: const ['Social Media', 'Friend', 'Advertisement', 'Other'],
+                    hint: 'How did you hear about us?',
+                    label: 'Referral Source',
+                    onChanged: (value) => setState(() => _selectedHearAbout = value),
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // Business Name & Country dropdown
                 _buildFieldRow(
                   left: _buildTextField(
                     controller: _businessNameController,
                     label: 'Business Name',
-                    hint: 'Enter Business Name',
-                    validator: (value) =>
-                    _selectedRole == 'business' && value!.isEmpty
-                        ? 'Required for business'
-                        : null,
+                    validator: (value) {
+                      if (_selectedRole == 'business' && value!.isEmpty) {
+                        return 'Business name is required';
+                      }
+                      return null;
+                    },
+                    textCapitalization: TextCapitalization.words,
                   ),
                   right: _buildDropdown(
                     value: _selectedCountry,
                     items: _countries,
-                    hint: 'Select Country',
+                    hint: 'Select your country',
                     label: 'Country',
-                    onChanged: (value) =>
-                        setState(() => _selectedCountry = value),
+                    onChanged: (value) => setState(() => _selectedCountry = value),
                   ),
                 ),
                 const SizedBox(height: 30),
-
-                // Register Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _registerWithEmail,
                     style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE4450F),
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: Color(0xFFE4450F),
                     ),
                     child: _isLoading
                         ? const CircularProgressIndicator()
-                        : const Text('Register', style: TextStyle(fontSize: 18),),
-
+                        : const Text('Register', style: TextStyle(fontSize: 18)),
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // Navigate to Login Page
                 TextButton(
-                  onPressed: () => Navigator.pushNamed(context, '/login'),
+                  onPressed: () => Navigator.pushReplacementNamed(context, '/login'),
                   child: const Text.rich(
                     TextSpan(
                       text: 'Already registered? ',
@@ -231,106 +260,135 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
   }
 
-  // Builds a row containing two widgets with spacing in between
   Widget _buildFieldRow({required Widget left, required Widget right}) {
-    return Container(
-      width: double.infinity, // Ensures it doesn't exceed available space
-      child: Row(
-        children: [
-          Flexible(child: left), // Allows widget to take only needed space
-          const SizedBox(width: 16), // Spacing
-          Flexible(child: right),
-        ],
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Flexible(
+              child: left,
+              flex: 1,
+            ),
+            const SizedBox(width: 16),
+            Flexible(
+              child: right,
+              flex: 1,
+            ),
+          ],
+        );
+      },
     );
   }
 
-
-// Builds a standard text input field with optional hint and validation
   Widget _buildTextField({
-    required TextEditingController controller, // Controller for handling input text
-    required String label, // Label text for the field
-    String? hint, // Optional hint text
-    String? Function(String?)? validator, // Optional validation function
+    required TextEditingController controller,
+    required String label,
+    String? hint,
+    String? Function(String?)? validator,
+    TextInputType? keyboardType,
+    TextCapitalization textCapitalization = TextCapitalization.none,
   }) {
     return TextFormField(
-      controller: controller, // Binds controller to field
+      controller: controller,
       decoration: InputDecoration(
-        isDense: true, // Reduces the size of input fields
-        labelText: label, // Displays label above input field
-        hintText: hint, // Displays hint inside input field
-        border: const OutlineInputBorder(), // Adds a border around the field
+        labelText: label,
+        hintText: hint,
+        border: const OutlineInputBorder(),
+        isDense: true,
       ),
-      maxLines: 1, // Prevents expansion
-      validator: validator, // Applies validation function
+      validator: validator,
+      keyboardType: keyboardType,
+      textCapitalization: textCapitalization,
+      enabled: !_isLoading,
+      textInputAction: TextInputAction.next,
     );
   }
 
-// Builds a password input field with toggle visibility functionality
   Widget _buildPasswordField({
-    required TextEditingController controller, // Controller for handling input text
-    required String label, // Label text for the field
-    String? Function(String?)? validator, // Optional validation function
+    required TextEditingController controller,
+    required String label,
+    required bool isConfirmPassword,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
-      controller: controller, // Binds controller to field
-      obscureText: _obscurePassword, // Toggles password visibility
+      controller: controller,
+      obscureText: isConfirmPassword ? _obscureConfirmPassword : _obscurePassword,
       decoration: InputDecoration(
-        isDense: true, // Reduces the size of input fields
-        labelText: label, // Displays label above input field
-        border: const OutlineInputBorder(), // Adds a border around the field
-        suffixIcon: IconButton( // Adds an eye icon button to toggle visibility
+        labelText: label,
+        border: const OutlineInputBorder(),
+        isDense: true,
+        suffixIcon: IconButton(
           icon: Icon(
-              _obscurePassword ? Icons.visibility : Icons.visibility_off),
-          onPressed: () => setState(() => _obscurePassword =
-          !_obscurePassword), // Updates state to toggle visibility
+              isConfirmPassword
+                  ? _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off
+                  : _obscurePassword ? Icons.visibility : Icons.visibility_off
+          ),
+          onPressed: () {
+            setState(() {
+              if (isConfirmPassword) {
+                _obscureConfirmPassword = !_obscureConfirmPassword;
+              } else {
+                _obscurePassword = !_obscurePassword;
+              }
+            });
+          },
         ),
       ),
-      maxLines: 1, // Prevents expansion
-      validator: validator, // Applies validation function
+      validator: validator,
+      enabled: !_isLoading,
+      textInputAction: TextInputAction.next,
     );
   }
 
-// Builds a dropdown field with dynamic values and validation
   Widget _buildDropdown({
-    required dynamic value, // Selected value for the dropdown
-    required List<dynamic> items, // List of dropdown items
-    required String hint, // Placeholder hint for dropdown
-    required String label, // Label text for dropdown
-    required Function(dynamic) onChanged, // Function to handle value changes
+    required dynamic value,
+    required List<dynamic> items,
+    required String hint,
+    required String label,
+    required Function(dynamic) onChanged,
   }) {
-    return DropdownButtonFormField(
-      value: value,
-      isExpanded: true,
-      // Binds the current selected value
-      decoration: InputDecoration(
-        isDense: true, // Reduces the size of input fields
-        labelText: label, // Displays label above dropdown
-        border: const OutlineInputBorder(), // Adds a border around dropdown
+    return ConstrainedBox(
+      constraints: const BoxConstraints(
+        minWidth: 120, // Minimum width for the dropdown
+        maxWidth: 180, // Maximum width to prevent overflow
       ),
-      hint: Text(
+      child: DropdownButtonFormField(
+        value: value,
+        items: items.map((item) {
+          return DropdownMenuItem(
+            value: item is Map ? item['value'] : item,
+            child: Text(
+              item is Map ? item['label']! : item.toString(),
+              overflow: TextOverflow.ellipsis, // Handle long text
+              maxLines: 1,
+            ),
+          );
+        }).toList(),
+        onChanged: _isLoading ? null : onChanged,
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 12,
+            horizontal: 12,
+          ),
+        ),
+        hint: Text(
           hint,
-          overflow: TextOverflow.ellipsis, // Truncate hint text with ... to avoid overflow
-     ),
-      // Displays hint when no selection is made
-      items: items.map<DropdownMenuItem>((item) {
-        return DropdownMenuItem(
-          value: item is Map ? item['value'] : item,
-          // Uses item value if it's a map, else uses item directly
-          child: Text(item is Map ? item['label']! : item
-              .toString()), // Displays item label if it's a map, else uses item directly
-        );
-      }).toList(),
-      onChanged: onChanged,
-      // Handles value selection
-      validator: (value) =>
-      value == null
-          ? 'Required'
-          : null, // Ensures selection is made
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+        ),
+        style: const TextStyle(
+          overflow: TextOverflow.ellipsis,
+        ),
+        validator: (value) => value == null ? 'Required' : null,
+        isExpanded: true, // Important for width constraints
+      ),
     );
   }
 
-// Disposes controllers to free up memory when the widget is removed
   @override
   void dispose() {
     _firstNameController.dispose();
@@ -340,6 +398,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _businessNameController.dispose();
-    super.dispose(); // Calls the parent class dispose method
+    super.dispose();
   }
 }

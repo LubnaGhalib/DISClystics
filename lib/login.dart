@@ -1,29 +1,10 @@
 import 'package:flutter/material.dart';
-
-void main() {
-  runApp(MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      theme: ThemeData(
-        appBarTheme: AppBarTheme(
-          backgroundColor: Color(0xff582562),
-          titleTextStyle: TextStyle(
-            color: Colors.white,
-            fontSize: 24.0,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-      home: SignInPage(),
-    );
-  }
-}
+import 'package:firebase_auth/firebase_auth.dart';
+import 'register.dart';
 
 class SignInPage extends StatefulWidget {
+  const SignInPage({super.key});
+
   @override
   SignInPageState createState() => SignInPageState();
 }
@@ -34,6 +15,7 @@ class SignInPageState extends State<SignInPage> {
   final _passwordController = TextEditingController();
   bool _rememberMe = false;
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -42,19 +24,46 @@ class SignInPageState extends State<SignInPage> {
     super.dispose();
   }
 
+  Future<void> _signInWithEmail() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() => _isLoading = true);
+      try {
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
+        );
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/home');
+      } on FirebaseAuthException catch (e) {
+        _showErrorSnackbar(e.message ?? 'Authentication failed');
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Sign In')),
+      appBar: AppBar(
+        title: const Text('Sign In'),
+        backgroundColor: const Color(0xff582562),
+      ),
       body: SingleChildScrollView(
-        // Wrap the body in a SingleChildScrollView
         child: Padding(
-          padding: EdgeInsets.all(16.0),
-          
+          padding: const EdgeInsets.all(16.0),
           child: Container(
-
             alignment: Alignment.center,
-            padding: EdgeInsets.fromLTRB(40.0, 120.0, 40.0, 40.0),
+            padding: const EdgeInsets.fromLTRB(40.0, 120.0, 40.0, 40.0),
             child: Form(
               key: _formKey,
               child: Column(
@@ -66,16 +75,26 @@ class SignInPageState extends State<SignInPage> {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your email';
                       }
+                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                        return 'Enter a valid email address';
+                      }
                       return null;
                     },
                   ),
-                  SizedBox(height: 20),
+                  const SizedBox(height: 20),
                   _buildPasswordField(
                     controller: _passwordController,
                     label: 'Password',
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your password';
+                      }
+                      if (value.length < 8) return 'Minimum 8 characters';
+                      if (!value.contains(RegExp(r'[A-Z]'))) {
+                        return 'At least one uppercase letter';
+                      }
+                      if (!value.contains(RegExp(r'[0-9]'))) {
+                        return 'At least one number';
                       }
                       return null;
                     },
@@ -85,36 +104,50 @@ class SignInPageState extends State<SignInPage> {
                       Checkbox(
                         value: _rememberMe,
                         onChanged: (value) {
-                          setState(() {
-                            _rememberMe = value!;
-                          });
+                          setState(() => _rememberMe = value!);
                         },
                       ),
-                      Text('Remember Me'),
+                      const Text('Remember Me'),
                     ],
                   ),
                   TextButton(
-                    onPressed: () {
-                      // Handle forgot password
-                    },
-                    child: Text('Forgot your password?'),
+                    onPressed: () {/* Add password reset logic */},
+                    child: const Text('Forgot your password?'),
                   ),
                   ElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        // Process data
-                      }
-                    },
+                    onPressed: _isLoading ? null : _signInWithEmail,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xff582562),
+                      backgroundColor: const Color(0xff582562),
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                      textStyle: TextStyle(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 30, vertical: 15),
+                      textStyle: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    child: Text('Sign in'),
+                    child: _isLoading
+                        ? const CircularProgressIndicator()
+                        : const Text('Sign in'),
+                  ),
+                  const SizedBox(height: 20),
+                  TextButton(
+                    onPressed: () =>
+                        Navigator.pushNamed(context, '/register'),
+                    child: const Text.rich(
+                      TextSpan(
+                        text: 'Don\'t have an account? ',
+                        children: [
+                          TextSpan(
+                            text: 'Sign Up',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xff582562),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -125,7 +158,6 @@ class SignInPageState extends State<SignInPage> {
     );
   }
 
-  // Builds a standard text input field with optional hint and validation
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -138,14 +170,13 @@ class SignInPageState extends State<SignInPage> {
         isDense: true,
         labelText: label,
         hintText: hint,
-        border: OutlineInputBorder(),
+        border: const OutlineInputBorder(),
       ),
-      maxLines: 1,
+      keyboardType: TextInputType.emailAddress,
       validator: validator,
     );
   }
 
-  // Builds a password input field with toggle visibility functionality
   Widget _buildPasswordField({
     required TextEditingController controller,
     required String label,
@@ -157,13 +188,14 @@ class SignInPageState extends State<SignInPage> {
       decoration: InputDecoration(
         isDense: true,
         labelText: label,
-        border: OutlineInputBorder(),
+        border: const OutlineInputBorder(),
         suffixIcon: IconButton(
-          icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
+          icon: Icon(_obscurePassword
+              ? Icons.visibility
+              : Icons.visibility_off),
           onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
         ),
       ),
-      maxLines: 1,
       validator: validator,
     );
   }
