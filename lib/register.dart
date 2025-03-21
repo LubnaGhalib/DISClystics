@@ -107,12 +107,12 @@ class RegistrationScreenState extends State<RegistrationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Register'),
+        title: const Text('Create Account'),
         backgroundColor: const Color(0xFF582562),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(20, 40, 20, 20),
           child: Form(
             key: _formKey,
             child: Column(
@@ -379,8 +379,12 @@ class RegistrationScreenState extends State<RegistrationScreen> {
           hint,
           overflow: TextOverflow.ellipsis,
           maxLines: 1,
+          style: const TextStyle(
+            color: Colors.black87, // Hint text color
+          ),
         ),
         style: const TextStyle(
+          color: Colors.black,
           overflow: TextOverflow.ellipsis,
         ),
         validator: (value) => value == null ? 'Required' : null,

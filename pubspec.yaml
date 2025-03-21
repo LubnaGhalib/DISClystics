@@ -19,7 +19,8 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.7.0
+  sdk: ">=3.0.0 <4.0.0"  # Must match Dart 3.1.5+
+  flutter: ">=3.13.0"     # Explicit minimum version
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -40,6 +41,7 @@ dependencies:
   google_sign_in: ^6.2.2
   cloud_firestore: ^5.3.0
   firebase_storage: ^12.3.0
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:
