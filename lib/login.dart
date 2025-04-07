@@ -1,7 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'register.dart';
+import 'profile_setup_screen.dart';
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -60,8 +61,26 @@ class SignInPageState extends State<SignInPage> {
           password: _passwordController.text.trim(),
         );
         await _saveRememberedEmail();
+
+// Add this new code to check profile existence
+        final user = FirebaseAuth.instance.currentUser!;
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
         if (!mounted) return;
-        Navigator.pushReplacementNamed(context, '/home');
+
+        if (!userDoc.exists) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProfileSetupScreen(userId: user.uid, registrationData: {}),
+            ),
+          );
+        } else {
+          Navigator.pushReplacementNamed(context, '/home');
+        }
       } on FirebaseAuthException catch (e) {
         _handleAuthError(e);
       } finally {

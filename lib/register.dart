@@ -1,3 +1,4 @@
+import 'package:disclystics/profile_setup_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -74,7 +75,22 @@ class RegistrationScreenState extends State<RegistrationScreen> {
         });
 
         if (!mounted) return;
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProfileSetupScreen(
+              userId: userCredential.user!.uid,
+              registrationData: {
+                'firstName': _firstNameController.text.trim(),
+                'lastName': _lastNameController.text.trim(),
+                'email': _emailController.text.trim(),
+                'username': _usernameController.text.trim(),
+                'role': _selectedRole,
+                'country': _selectedCountry,
+              },
+            ),
+          ),
+        );
       } on FirebaseAuthException catch (e) {
         String errorMessage = 'Registration failed. Please try again.';
         switch (e.code) {
@@ -92,16 +108,16 @@ class RegistrationScreenState extends State<RegistrationScreen> {
             SnackBar(content: Text(errorMessage),
               duration: const Duration(seconds: 5),
             ));
-        } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(e.toString()),
-                duration: const Duration(seconds: 5),
-              ));
-              } finally {
-              if (mounted) setState(() => _isLoading = false);
-              }
-          }
-          }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString()),
+              duration: const Duration(seconds: 5),
+            ));
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
